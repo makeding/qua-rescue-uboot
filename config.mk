@@ -191,6 +191,10 @@ gccincdir := $(shell $(CC) -print-file-name=include)
 CPPFLAGS := $(DBGFLAGS) $(OPTFLAGS) $(RELFLAGS)		\
 	-D__KERNEL__
 
+ifeq ($(CONFIG_QUA_RAM_RESCUE),y)
+CPPFLAGS += -std=gnu89 -fgnu89-inline -ffunction-sections -fdata-sections
+endif
+
 # Enable garbage collection of un-used sections for SPL
 ifeq ($(CONFIG_SPL_BUILD),y)
 CPPFLAGS += -ffunction-sections -fdata-sections
@@ -223,7 +227,7 @@ endif
 
 #ifneq ($(CONFIG_BSP_REALTEK),)
 CPPFLAGS += -DLITTLE_ENDIAN
-CPPFLAGS += -I$(TOPDIR)/include -I$(TOPDIR)/include/asm/arch -I$(TOPDIR)/include/asm/arch/rbus
+CPPFLAGS += -I$(TOPDIR)/include -I$(TOPDIR)/arch/$(ARCH)/include/asm/arch-$(SOC) -I$(TOPDIR)/arch/$(ARCH)/include/asm/arch-$(SOC)/rbus
 #endif
 
 ifeq ($(CONFIG_QC_VERIFY),y)

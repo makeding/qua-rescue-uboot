@@ -43,7 +43,14 @@ COBJS-$(CONFIG_SERIAL_MULTI) += serial.o
 COBJS-$(CONFIG_UBOOT_DEFAULT) += xyzModem.o
 
 # core command
+ifeq ($(CONFIG_QUA_RAM_RESCUE),y)
+STATIC_LIB =
+COBJS-y += cmd_qua_ram.o
+COBJS-$(CONFIG_QUA_CHAIN_LINUX) += qua_chain_linux.o
+COBJS-$(CONFIG_QUA_USB_CONSOLE) += qua_usb_console.o qua_rescue_window.o
+else
 COBJS-y += cmd_boot.o
+endif
 COBJS-$(CONFIG_CMD_BOOTM) += cmd_bootm.o
 COBJS-y += cmd_help.o
 COBJS-y += cmd_nvedit.o
@@ -231,6 +238,9 @@ COBJS-$(CONFIG_SYS_LOGO_DISP) += logo_disp.o
 COBJS-$(CONFIG_UBOOT_DEFAULT) += cmd_uart_write.o
 
 
+ifeq ($(CONFIG_QUA_RAM_RESCUE),y)
+COBJS-y := $(filter-out cmd_uart_write.o cmd_pcmcia.o cmd_gettime.o,$(COBJS-y))
+endif
 COBJS	:= $(sort $(COBJS-y))
 XCOBJS	:= $(sort $(XCOBJS-y))
 SRCS	:= $(COBJS:.o=.c) $(XCOBJS:.o=.c)

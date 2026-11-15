@@ -1,0 +1,54 @@
+{
+  "nonce": "0123456789abcdef",
+  "cid": "replace-with-emmc-cid",
+  "disk": "/dev/mmcblk0",
+  "original_bootcode_sha256": "replace-with-sha256",
+  "normal": {
+    "bootargs": "replace-with-accepted-linux-bootargs",
+    "bootcmd": "replace-with-stock-first-stage-bootcmd"
+  },
+  "buffers": {
+    "kernel": {
+      "lba": 196608,
+      "bytes": 6291456,
+      "crc32": "00000000",
+      "sha256": "replace"
+    },
+    "dtb": {
+      "lba": 212736,
+      "bytes": 10240,
+      "crc32": "00000000",
+      "sha256": "replace"
+    },
+    "stage2": {
+      "lba": 164133,
+      "bytes": 1048576,
+      "crc32": "00000000",
+      "sha256": "replace"
+    },
+    "audio": {
+      "lba": 79745,
+      "bytes": 3363328,
+      "crc32": "00000000",
+      "sha256": "replace"
+    },
+    "base_env": {
+      "bytes": 131072,
+      "crc32": "00000000",
+      "sha256": "replace"
+    },
+    "trial_slot_before": {
+      "bytes": 262144,
+      "sha256": "replace"
+    }
+  },
+  "trial_slot": {
+    "start_sector": 210944,
+    "sectors": 512,
+    "base_env_sector": 211184,
+    "first_loader_sector": 211454,
+    "second_loader_sector": 211455,
+    "candidate_max_sectors": 240
+  },
+  "protected_ranges": []
+}

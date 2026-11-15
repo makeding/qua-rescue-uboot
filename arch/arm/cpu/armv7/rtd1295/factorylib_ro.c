@@ -559,7 +559,7 @@ int factory_ro_init(void)
 	return 0;
 }
 
-#ifdef ENABLE_FACTORY_RO_CONSOLE_MODE
+#if defined(ENABLE_FACTORY_RO_CONSOLE_MODE) && !defined(CONFIG_QUA_RAM_RESCUE)
 int do_factory_ro(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
 	char *buffer;

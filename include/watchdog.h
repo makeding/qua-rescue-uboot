@@ -27,7 +27,9 @@
 #ifndef _WATCHDOG_H_
 #define _WATCHDOG_H_
 
+#ifndef USE_HOSTCC
 #include <watchdog_api.h>
+#endif
 
 
 

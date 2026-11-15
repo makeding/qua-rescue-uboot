@@ -358,10 +358,12 @@ int abortboot(int bootdelay)
 	ft_init_gpio();
 #endif
 
+#ifndef CONFIG_QUA_RAM_RESCUE
         setISOGPIO(CONFIG_LTE_PWR,0);
         setGPIO(CONFIG_FAN_CTR1,0);
         setGPIO(CONFIG_FAN_CTR2,0);
         setGPIO(CONFIG_SATA_HDD_POWER,0);
+#endif
 
 start = get_timer(0);
 	//for (loop_i = 0;loop_i < DETECT_KEY_RETRY_COUNT && (!abort);loop_i++) {
@@ -761,10 +763,12 @@ void main_loop (void)
 	char bcs_set[16];
 #endif /* CONFIG_BOOTCOUNT_LIMIT */
 
+#ifndef CONFIG_QUA_RAM_RESCUE
         setISOGPIO(CONFIG_LTE_PWR,0);
         setGPIO(CONFIG_FAN_CTR1,0);
         setGPIO(CONFIG_FAN_CTR2,0);
         setGPIO(CONFIG_SATA_HDD_POWER,0);
+#endif
 
 #ifdef CONFIG_BOOTCOUNT_LIMIT
 	bootcount = bootcount_load();

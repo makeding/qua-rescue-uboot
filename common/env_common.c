@@ -432,6 +432,10 @@ void env_relocate(void)
 	//int mac_len;
 	//int rc = 0;
 
+#ifdef CONFIG_QUA_RAM_RESCUE
+	set_default_env(NULL);
+	return;
+#endif
 	msg = (char *)malloc(128);
 
 #if defined(CONFIG_NEEDS_MANUAL_RELOC)

@@ -36,6 +36,9 @@ SECTIONS
 		__image_copy_start = .;
 		CPUDIR/start.o (.text)
 		*(.text)
+#ifdef CONFIG_QUA_RAM_RESCUE
+		*(.text.*)
+#endif
 	}
 
 	. = ALIGN(4);
@@ -44,37 +47,52 @@ SECTIONS
 	. = ALIGN(4);
 	.data : {
 		*(.data)
+#ifdef CONFIG_QUA_RAM_RESCUE
+		*(.data.*)
+#endif
 
 		/********* Insert A/V CPU related image start *********/
 		. = ALIGN(8);
 
 		_f_exc_redirect_img = .;
+#ifndef CONFIG_QUA_RAM_RESCUE
 		MIPS_BOOTLOAD_LIB_PATH (.exc_redirect)
+#endif
 		. = ALIGN(8);
 		_e_exc_redirect_img = .;
 
 		_f_exc_dispatch_img = .;
+#ifndef CONFIG_QUA_RAM_RESCUE
 		MIPS_BOOTLOAD_LIB_PATH (.exc_dispatch)
+#endif
 		. = ALIGN(8);
 		_e_exc_dispatch_img = .;
 
 		_f_a_entry_img = .;
+#ifndef CONFIG_QUA_RAM_RESCUE
 		MIPS_BOOTLOAD_LIB_PATH (.a_entry)
+#endif
 		. = ALIGN(8);
 		_e_a_entry_img = .;
 
 		_f_v_entry_img = .;
+#ifndef CONFIG_QUA_RAM_RESCUE
 		MIPS_BOOTLOAD_LIB_PATH (.v_entry)
+#endif
 		. = ALIGN(8);
 		_e_v_entry_img = .;
 
 		_f_isrvideo_img = .;
+#ifndef CONFIG_QUA_RAM_RESCUE
 		MIPS_BOOTLOAD_LIB_PATH (.isrvideoimg)
+#endif
 		. = ALIGN(8);
 		_e_isrvideo_img = .;
 
 		_f_rosbootvector_img = .;
+#ifndef CONFIG_QUA_RAM_RESCUE
 		MIPS_BOOTLOAD_LIB_PATH (.rosbootvectorimg)
+#endif
 		. = ALIGN(8);
 		_e_rosbootvector_img = .;
 
@@ -86,7 +104,11 @@ SECTIONS
 
 	. = .;
 	__u_boot_cmd_start = .;
+#ifdef CONFIG_QUA_RAM_RESCUE
+	.u_boot_cmd : { KEEP(*(.u_boot_cmd)) }
+#else
 	.u_boot_cmd : { *(.u_boot_cmd) }
+#endif
 	__u_boot_cmd_end = .;
 
 	. = ALIGN(4);
@@ -118,6 +140,9 @@ SECTIONS
 	.bss __rel_dyn_start (OVERLAY) : {	
 		__bss_start = .;
 		*(.bss)
+#ifdef CONFIG_QUA_RAM_RESCUE
+		*(.bss.*)
+#endif
 		 . = ALIGN(4);
 		__bss_end__ = .;
 	}

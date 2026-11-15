@@ -1,0 +1,5 @@
+/out/
+/profiles/*.json
+!/profiles/qua-profile.example.json
+*.pyc
+__pycache__/

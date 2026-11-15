@@ -266,7 +266,9 @@ int arch_cpu_init(void)
 	__attribute__((weak, alias("__arch_cpu_init")));
 
 init_fnc_t *init_sequence[] = {
+#ifndef CONFIG_QUA_RAM_RESCUE
 	clock_init,			/* init clock, pll related */
+#endif
 	arch_cpu_init,		/* basic arch cpu dependent setup */
 
 #if defined(CONFIG_BOARD_EARLY_INIT_F)
@@ -275,7 +277,9 @@ init_fnc_t *init_sequence[] = {
 #ifdef CONFIG_OF_CONTROL
 	fdtdec_check_fdt,
 #endif
+#ifndef CONFIG_QUA_RAM_RESCUE
 	timer_init,		/* initialize timer */
+#endif
 #ifdef CONFIG_FSL_ESDHC
 	get_clocks,
 #endif
@@ -716,7 +720,7 @@ void board_init_r(gd_t *id, ulong dest_addr)
  *	to specific ddr region for A/V CPU use.
  *********************************************************
  */
-#ifdef CONFIG_BSP_REALTEK
+#if defined(CONFIG_BSP_REALTEK) && !defined(CONFIG_QUA_RAM_RESCUE)
 {
 	unsigned char *a,*b;
 	boot_av_info_t *boot_av;
@@ -889,9 +893,11 @@ void board_init_r(gd_t *id, ulong dest_addr)
 #endif
 
 	 /* set up exceptions */
+#ifndef CONFIG_QUA_RAM_RESCUE
 	interrupt_init();
 	/* enable exceptions */
 	enable_interrupts();
+#endif
 
 	/* Perform network card initialisation if necessary */
 #if defined(CONFIG_DRIVER_SMC91111) || defined (CONFIG_DRIVER_LAN91C96)
@@ -960,9 +966,19 @@ void board_init_r(gd_t *id, ulong dest_addr)
 		because we need to use nwc mcp, so clear this register after romcode do mcp       
 		this is workaround for mcp.
 	*/
+#ifndef CONFIG_QUA_RAM_RESCUE
 	*(volatile unsigned int*)(0x98015934) = 0x0;
+#endif
 
       WATCHDOG_KICK();
+#ifdef CONFIG_QUA_CHAIN_LINUX
+	{
+		extern void qua_chain_linux_trial(void);
+		extern int qua_rescue_window(void);
+		if (!qua_rescue_window())
+			qua_chain_linux_trial();
+	}
+#endif
 	/* main_loop() can return to retry autoboot, if so just run it again. */
 	for (;;) {
 		main_loop();

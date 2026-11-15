@@ -175,6 +175,10 @@ all:
 sinclude $(obj)include/autoconf.mk.dep
 sinclude $(obj)include/autoconf.mk
 
+ifeq ($(CONFIG_QUA_RAM_RESCUE),y)
+SUBDIR_EXAMPLES =
+endif
+
 ifndef CONFIG_SANDBOX
 SUBDIRS += $(SUBDIR_EXAMPLES)
 endif
@@ -188,6 +192,7 @@ export	ARCH CPU BOARD VENDOR SOC
 ifeq ($(HOSTARCH),$(ARCH))
 CROSS_COMPILE ?=
 else
+ifeq ($(strip $(CROSS_COMPILE)),)
    # Chuck add an auto-check of toolchain
    TOPDIR  := $(shell /bin/pwd)
    ARM_SRC_ROOT := $(TOPDIR)/..
@@ -201,6 +206,7 @@ else
    endif
 
    CROSS_COMPILE = $(ARM_SRC_ROOT)/tmp/$(TOOLCHAIN_PREFIX)/bin/asdk-linux-
+endif
 endif
 
 # load other configuration
@@ -344,7 +350,9 @@ LIBS-$(CONFIG_UBOOT_DEFAULT) += api/libapi.o
 LIBS-$(CONFIG_UBOOT_DEFAULT) += post/libpost.o
 LIBS-$(CONFIG_UBOOT_DEFAULT) += test/libtest.o
 LIBS-$(CONFIG_QC_VERIFY) += qc_verify/libqc_verify.o
+ifneq ($(CONFIG_QUA_RAM_RESCUE),y)
 LIBS-y += $(MIPS_BOOTLOAD_LIB_PATH)
+endif
 LIBS-$(CONFIG_FT_TEST) += FTtest/libFTtest.o
 LIBS-$(CONFIG_MODULE_TEST) += ModuleTest/libMTest.o FTtest/libFTtest.o
 
@@ -370,6 +378,9 @@ ifeq ($(CONFIG_FT_RESCUE),y)
 LIBS-y += lib/libfdt/libfdt.o
 endif
 
+ifeq ($(CONFIG_QUA_RAM_RESCUE),y)
+LIBS-y := $(filter-out drivers/usb/% drivers/mmc/%,$(LIBS-y))
+endif
 LIBS := $(addprefix $(obj),$(sort $(LIBS-y)))
 .PHONY : $(LIBS)
 
@@ -396,6 +407,11 @@ ifeq ("$(AUTORUN)", "bcldr")
     _AUTO_RUN_ = -DCONFIG_AUTO_RUN_BOOTLOADER
 endif
 export _AUTO_RUN_
+
+ifeq ($(CONFIG_QUA_RAM_RESCUE),y)
+LDPPFLAGS += -DCONFIG_QUA_RAM_RESCUE
+LDFLAGS += --gc-sections
+endif
 
 # Special flags for CPP when processing the linker script.
 # Pass the version down so we can handle backwards compatibility
@@ -600,10 +616,11 @@ ifeq ($(CONFIG_KALLSYMS),y)
 			-c common/system_map.c -o $(obj)common/system_map.o
 		$(GEN_UBOOT) $(obj)common/system_map.o
 endif
-		$(OBJDUMP) -d u-boot > u-boot.dis
+		$(OBJDUMP) -d $(obj)u-boot > $(obj)u-boot.dis
 
 
 $(MIPS_BOOTLOAD_LIB_NAME):
+ifneq ($(CONFIG_QUA_RAM_RESCUE),y)
 ifeq ($(MIPS_BOOTLOAD_IMAGE_ENABLE),y)
 		$(LD) $(LDFLAGS) -r -o $(MIPS_BOOTLOAD_LIB_DIR)/$(MIPS_BOOTLOAD_LIB_NAME) $(MIPS_BOOTLOAD_LIB_DIR)/bootload.o
 		$(OBJCOPY) --add-section .v_entry=$(MIPS_BOOTLOAD_IMAGE_PATH)/v_entry.img $(MIPS_BOOTLOAD_LIB_PATH)
@@ -614,6 +631,7 @@ ifeq ($(MIPS_BOOTLOAD_IMAGE_ENABLE),y)
 		$(OBJCOPY) --add-section .a_entry=$(MIPS_BOOTLOAD_IMAGE_PATH)/a_entry.img $(MIPS_BOOTLOAD_LIB_PATH)
 else
 		@echo "Warning : MIPS_BOOTLOAD_IMAGE_ENABLE = n"
+endif
 endif
 
 $(OBJS):	depend
