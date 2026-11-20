@@ -62,12 +62,12 @@
 #define EP0 0
 #define BULK_EP 1
 #define NOTIFY_EP 2
-#define RING_SIZE 4096
+#define RING_SIZE 16384
 
 static volatile void *udc;
 static u8 rx_ring[RING_SIZE], tx_ring[RING_SIZE];
 static unsigned int rx_head, rx_count, tx_head, tx_count, bulk_mps = 512;
-static bool configured, dtr, line_coding_out;
+static bool configured, dtr, line_coding_out, bulk_out_armed;
 static u32 initial_id, reset_events, enum_events, setup_events;
 enum ep0_phase { EP0_SETUP, EP0_IN_DATA, EP0_OUT_STATUS, EP0_OUT_DATA, EP0_IN_STATUS };
 static enum ep0_phase ep0_phase;
@@ -121,6 +121,7 @@ static void arm_ep0_data(unsigned int bytes)
 
 static void arm_bulk_out(void)
 {
+	bulk_out_armed = true;
 	wr(DOEPTSIZ(BULK_EP), bulk_mps | DIEPTSIZ_PKTCNT(1));
 	wr(DOEPCTL(BULK_EP), rd(DOEPCTL(BULK_EP)) | DEPCTL_EPENA | DEPCTL_CNAK);
 }
@@ -308,7 +309,7 @@ void qua_usb_console_poll(void)
 	if (status & GINT_USBRST) {
 		++reset_events;
 		wr(GINTSTS, GINT_USBRST);
-		configured = dtr = line_coding_out = false;
+		configured = dtr = line_coding_out = bulk_out_armed = false;
 		rx_head = rx_count = tx_head = tx_count = 0;
 		wr(DCFG, 0);
 		wr(DIEPINT(0), 0xffffffff); wr(DOEPINT(0), 0xffffffff);
@@ -337,7 +338,11 @@ void qua_usb_console_poll(void)
 			u8 setup[8]; u32 a = rd(FIFO(EP0)), b = rd(FIFO(EP0));
 			memcpy(setup, &a, 4); memcpy(setup + 4, &b, 4); setup_request(setup);
 		} else if (state == 2 && ep == BULK_EP) {
-			receive_bulk(bytes); arm_bulk_out();
+			receive_bulk(bytes);
+			if (RING_SIZE - rx_count >= bulk_mps)
+				arm_bulk_out();
+			else
+				bulk_out_armed = false;
 		} else if (state == 2 && ep == EP0 && line_coding_out) {
 			unsigned int i;
 			for (i = 0; i < (bytes + 3) / 4; ++i) {
@@ -403,7 +408,7 @@ int qua_usb_console_init(void)
 	wr(GINTMSK, GINT_USBRST | GINT_ENUMDONE | GINT_RXFLVL | GINT_IEPINT | GINT_OEPINT);
 	wr(GAHBCFG, GAHBCFG_GLBLINT); wr(DIEPCTL(EP0), DEPCTL_USBACTEP); arm_ep0_setup();
 	wr(DCTL, (rd(DCTL) & ~DCTL_SFTDISCON) | DCTL_CGNPINNAK | DCTL_CGOUTNAK);
-	configured = dtr = line_coding_out = false; rx_head = rx_count = tx_head = tx_count = 0;
+	configured = dtr = line_coding_out = bulk_out_armed = false; rx_head = rx_count = tx_head = tx_count = 0;
 	return 0;
 }
 
@@ -413,6 +418,8 @@ int qua_usb_console_getc(void)
 	u8 byte;
 	while (!qua_usb_console_tstc()) ;
 	byte = rx_ring[rx_head]; rx_head = (rx_head + 1) % RING_SIZE; --rx_count;
+	if (!bulk_out_armed && configured && RING_SIZE - rx_count >= bulk_mps)
+		arm_bulk_out();
 	return byte;
 }
 void qua_usb_console_putc(const char byte)
@@ -433,6 +440,131 @@ void qua_usb_console_shutdown(void)
 	if (!udc) return;
 	wr(GINTMSK, 0); wr(DCTL, rd(DCTL) | DCTL_SFTDISCON);
 	udc = NULL; configured = dtr = false;
+}
+
+int qua_usb_console_recv_raw(ulong addr, ulong len, u32 *crc_out)
+{
+	u8 *dst = (u8 *)addr;
+	ulong received = 0;
+	unsigned int idle_us = 0;
+
+	if (!udc || !configured)
+		return -ENODEV;
+
+	while (tx_count && configured && dtr) {
+		qua_usb_console_poll();
+		udelay(10);
+	}
+
+	while (received < len && rx_count) {
+		dst[received++] = rx_ring[rx_head];
+		rx_head = (rx_head + 1) % RING_SIZE;
+		--rx_count;
+	}
+
+	if (received < len && !bulk_out_armed)
+		arm_bulk_out();
+
+	while (received < len) {
+		u32 status = rd(GINTSTS);
+
+		if (status & GINT_USBRST) {
+			qua_usb_console_poll();
+			return -ECONNRESET;
+		}
+		if (status & (GINT_ENUMDONE | GINT_IEPINT | GINT_OEPINT)) {
+			if (status & GINT_ENUMDONE) {
+				++enum_events;
+				wr(GINTSTS, GINT_ENUMDONE);
+				configure_bulk_mps();
+				arm_ep0_setup();
+			}
+			if (status & GINT_IEPINT) {
+				u32 pending = rd(DIEPINT(0));
+				wr(DIEPINT(0), pending);
+				if (pending & QUA_BIT(0))
+					ep0_in_complete();
+				wr(DIEPINT(1), rd(DIEPINT(1)));
+				wr(DIEPINT(2), rd(DIEPINT(2)));
+			}
+			if (status & GINT_OEPINT) {
+				wr(DOEPINT(0), rd(DOEPINT(0)));
+				wr(DOEPINT(1), rd(DOEPINT(1)));
+			}
+		}
+
+		if (rd(GINTSTS) & GINT_RXFLVL) {
+			idle_us = 0;
+			while (rd(GINTSTS) & GINT_RXFLVL) {
+				u32 p = rd(GRXSTSP);
+				unsigned int ep = p & 0xf;
+				unsigned int bytes = (p >> 4) & 0x7ff;
+				unsigned int state = (p >> 17) & 0xf;
+
+				if (state == 2 && ep == BULK_EP) {
+					unsigned int words = (bytes + 3) / 4;
+					unsigned int i;
+
+					for (i = 0; i < words; ++i) {
+						u32 word = rd(FIFO(0));
+						unsigned int j;
+
+						if (received + 4 <= len && i * 4 + 4 <= bytes &&
+						    (((ulong)(dst + received)) & 3) == 0) {
+							*(u32 *)(dst + received) = word;
+							received += 4;
+							continue;
+						}
+						for (j = 0; j < 4 && i * 4 + j < bytes; ++j) {
+							u8 b = word >> (8 * j);
+							if (received < len) {
+								dst[received++] = b;
+							} else if (rx_count < RING_SIZE) {
+								rx_ring[(rx_head + rx_count) % RING_SIZE] = b;
+								++rx_count;
+							}
+						}
+					}
+					if (received < len || RING_SIZE - rx_count >= bulk_mps)
+						arm_bulk_out();
+					else
+						bulk_out_armed = false;
+				} else if (state == 6 && ep == EP0) {
+					u8 setup[8];
+					u32 a = rd(FIFO(EP0)), b = rd(FIFO(EP0));
+					memcpy(setup, &a, 4);
+					memcpy(setup + 4, &b, 4);
+					setup_request(setup);
+				} else if (state == 2 && ep == EP0 && line_coding_out) {
+					unsigned int i;
+					for (i = 0; i < (bytes + 3) / 4; ++i) {
+						u32 word = rd(FIFO(0));
+						unsigned int j;
+						for (j = 0; j < 4 && i * 4 + j < bytes; ++j)
+							if (i * 4 + j < sizeof(line_coding))
+								line_coding[i * 4 + j] = word >> (8 * j);
+					}
+					line_coding_out = false;
+					ep0_status();
+				} else if (state == 2 && ep == EP0 && ep0_phase == EP0_OUT_STATUS) {
+					discard_fifo(ep, bytes);
+					arm_ep0_setup();
+				} else {
+					discard_fifo(ep, bytes);
+				}
+			}
+		} else {
+			udelay(1);
+			if (++idle_us >= 10000000U)
+				return -ETIMEDOUT;
+		}
+	}
+
+	if (crc_out)
+		*crc_out = crc32(0, (const uchar *)addr, len);
+	if (!bulk_out_armed && configured && RING_SIZE - rx_count >= bulk_mps)
+		arm_bulk_out();
+	return 0;
 }
 
 void qua_usb_console_debug(void)

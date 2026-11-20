@@ -9,4 +9,5 @@ void qua_usb_console_putc(const char c);
 int qua_usb_console_connected(void);
 int qua_usb_console_opened(void);
 void qua_usb_console_shutdown(void);
+int qua_usb_console_recv_raw(ulong addr, ulong len, u32 *crc_out);
 #endif
