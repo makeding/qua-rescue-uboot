@@ -32,7 +32,8 @@ screen /dev/cu.usbmodemQuaRescue1 115200
 ```
 
 - `version`：バージョン表示
-- `boot`：Linux を起動
+- `usbrecv 0x30000000 <hex_size>`：USB 経由で `QuaStation-maintenance-initramfs.uImage` を受信（uImage ヘッダーを自動検出し、`boot` 時の initrd として設定）
+- `boot`：Linux を起動（`usbrecv` 後はそのままメンテナンス RAM 環境を起動）
 - 操作なし：純正 U-Boot の2秒＋レスキューの3秒の受付後、Linux へ進む
 
 ## 元に戻す

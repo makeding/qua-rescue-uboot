@@ -45,7 +45,17 @@ static void __attribute__((noreturn)) qua_enter_stage2(void)
 void qua_chain_linux_trial(void)
 {
 	void *dtb = (void *)QUA_DTB_ADDR;
+	const char *initrd_env;
+	char initrd_addr[24];
+	char bootcmd_buf[128];
 	int ret;
+
+	initrd_addr[0] = '\0';
+	initrd_env = getenv("qua_initrd_addr");
+	if (initrd_env && initrd_env[0]) {
+		strncpy(initrd_addr, initrd_env, sizeof(initrd_addr) - 1);
+		initrd_addr[sizeof(initrd_addr) - 1] = '\0';
+	}
 
 	printf("QUA_CHAIN trial nonce=%s\n", QUA_TRIAL_NONCE);
 
@@ -83,12 +93,25 @@ void qua_chain_linux_trial(void)
 		return;
 	}
 
+	if (initrd_addr[0]) {
+		snprintf(bootcmd_buf, sizeof(bootcmd_buf),
+			 "env set fdt_high ffffffffffffffff;booti 0x26000000 %s 0x23000000",
+			 initrd_addr);
+		if (setenv("bootcmd", bootcmd_buf)) {
+			puts("QUA_CHAIN volatile environment setup failed\n");
+			return;
+		}
+	} else if (
 #ifdef QUA_MAINTENANCE_INITRD
-	if (setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 0x30000000 0x23000000") ||
+	    setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 0x30000000 0x23000000")
 #else
-	if (setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 - 0x23000000") ||
+	    setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 - 0x23000000")
 #endif
-	    setenv("bootdelay", "0") ||
+	) {
+		puts("QUA_CHAIN volatile environment setup failed\n");
+		return;
+	}
+	if (setenv("bootdelay", "0") ||
 	    setenv("fdt_loadaddr", "23000000")) {
 		puts("QUA_CHAIN volatile environment setup failed\n");
 		return;

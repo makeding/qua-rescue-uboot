@@ -2,6 +2,7 @@
 /* Volatile console trial: no vendor bootr, key provisioning or AV commands. */
 #include <common.h>
 #include <command.h>
+#include <image.h>
 
 static int do_qua_go(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
 {
@@ -72,6 +73,14 @@ static int do_qua_usbrecv(cmd_tbl_t *cmdtp, int flag, int argc, char * const arg
 		return 1;
 	}
 	printf("## Received 0x%lx bytes, crc32=%08x\n", len, crc);
+	if (len >= sizeof(image_header_t) &&
+	    be32_to_cpu(*(const u32 *)addr) == IH_MAGIC) {
+		char addr_buf[20];
+
+		snprintf(addr_buf, sizeof(addr_buf), "0x%08lx", addr);
+		setenv("qua_initrd_addr", addr_buf);
+		printf("## Detected uImage; set qua_initrd_addr=%s\n", addr_buf);
+	}
 	return 0;
 }
 U_BOOT_CMD(usbrecv, 3, 0, do_qua_usbrecv,
