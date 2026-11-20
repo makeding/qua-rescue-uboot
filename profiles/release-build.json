@@ -1,0 +1,8 @@
+{
+  "nonce": "1c84b0e6a58b290b",
+  "device_specific_environment": true,
+  "buffers": {
+    "stage2": {"bytes": 1048576, "crc32": "33727ec5"},
+    "base_env": {"bytes": 131072, "crc32": "00000000"}
+  }
+}

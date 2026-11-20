@@ -83,14 +83,11 @@ void qua_chain_linux_trial(void)
 		return;
 	}
 
-	if (qua_check_crc("kernel", QUA_KERNEL_ADDR, QUA_KERNEL_BYTES,
-			  QUA_KERNEL_CRC32) ||
+	if (
 #ifdef QUA_MAINTENANCE_INITRD
 	    qua_check_crc("initrd", QUA_INITRD_ADDR, QUA_INITRD_BYTES,
 			  QUA_INITRD_CRC32) ||
 #endif
-	    qua_check_crc("dtb", QUA_DTB_ADDR, QUA_DTB_BYTES,
-			  QUA_DTB_CRC32) ||
 #ifndef QUA_DEVICE_SPECIFIC_ENVIRONMENT
 	    qua_check_crc("baseline-env", QUA_BASE_ENV_ADDR,
 			  QUA_BASE_ENV_BYTES, QUA_BASE_ENV_CRC32) ||
@@ -122,11 +119,10 @@ void qua_chain_linux_trial(void)
 		return;
 	}
 
-	if (setenv("bootargs", QUA_TRIAL_BOOTARGS) ||
 #ifdef QUA_MAINTENANCE_INITRD
-	    setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 0x30000000 0x23000000") ||
+	if (setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 0x30000000 0x23000000") ||
 #else
-	    setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 - 0x23000000") ||
+	if (setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 - 0x23000000") ||
 #endif
 	    setenv("bootdelay", "0") ||
 	    setenv("fdt_loadaddr", "23000000")) {

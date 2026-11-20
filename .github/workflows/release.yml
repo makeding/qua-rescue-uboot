@@ -13,16 +13,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Prepare build profile
-        env:
-          QUA_BUILD_PROFILE: ${{ secrets.QUA_BUILD_PROFILE }}
-        run: |
-          mkdir -p out
-          printf '%s' "$QUA_BUILD_PROFILE" > out/build-profile.json
       - name: Build toolchain image
         run: docker build -t qua-rescue-builder .
       - name: Build rescue firmware
-        run: docker run --rm -v "$PWD:/src" qua-rescue-builder bash scripts/build-rescue.sh out/build-profile.json
+        run: docker run --rm -v "$PWD:/src" qua-rescue-builder bash scripts/build-rescue.sh profiles/release-build.json
       - name: Prepare release assets
         run: |
           mkdir -p out/release

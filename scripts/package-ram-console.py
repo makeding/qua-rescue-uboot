@@ -97,11 +97,11 @@ def main():
     }
     if args.chain_plan:
         plan = json.loads(args.chain_plan.read_text())
-        marker = 'qua_ram_chain=' + plan['nonce']
+        marker = plan['nonce']
         if marker.encode() not in image:
             raise RuntimeError('chain trial marker missing from candidate')
         manifest['status'] = 'offline-built; not executed; one-shot chain-to-Linux trial'
-        manifest['linux_acceptance_marker'] = marker
+        manifest['rescue_trial_nonce'] = marker
         manifest['persistent_writes'] = 'external installer only: trial slot and one-shot environment'
     (args.output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
     (args.output / 'uart-steps.txt').write_text(
