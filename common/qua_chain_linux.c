@@ -9,6 +9,7 @@
 #include <common.h>
 #include <environment.h>
 #include <fdt_support.h>
+#include <image.h>
 #include <asm/u-boot-arm.h>
 #include <configs/qua_trial_values.h>
 
@@ -47,7 +48,7 @@ void qua_chain_linux_trial(void)
 	void *dtb = (void *)QUA_DTB_ADDR;
 	const char *initrd_env;
 	char initrd_addr[24];
-	char bootcmd_buf[128];
+	ulong initrd = 0;
 	int ret;
 
 	initrd_addr[0] = '\0';
@@ -55,7 +56,12 @@ void qua_chain_linux_trial(void)
 	if (initrd_env && initrd_env[0]) {
 		strncpy(initrd_addr, initrd_env, sizeof(initrd_addr) - 1);
 		initrd_addr[sizeof(initrd_addr) - 1] = '\0';
+		initrd = simple_strtoul(initrd_addr, NULL, 16);
 	}
+#ifdef QUA_MAINTENANCE_INITRD
+	else
+		initrd = QUA_INITRD_ADDR;
+#endif
 
 	printf("QUA_CHAIN trial nonce=%s\n", QUA_TRIAL_NONCE);
 
@@ -93,21 +99,22 @@ void qua_chain_linux_trial(void)
 		return;
 	}
 
-	if (initrd_addr[0]) {
-		snprintf(bootcmd_buf, sizeof(bootcmd_buf),
-			 "env set fdt_high ffffffffffffffff;booti 0x26000000 %s 0x23000000",
-			 initrd_addr);
-		if (setenv("bootcmd", bootcmd_buf)) {
-			puts("QUA_CHAIN volatile environment setup failed\n");
+	if (initrd) {
+		const image_header_t *header = (const image_header_t *)initrd;
+		ulong start = initrd + sizeof(*header);
+		int chosen = fdt_path_offset(dtb, "/chosen");
+
+		/* Pass the payload directly, bypassing vendor ramdisk processing. */
+		ret = fdt_setprop_u32(dtb, chosen, "linux,initrd-start", start);
+		if (!ret)
+			ret = fdt_setprop_u32(dtb, chosen, "linux,initrd-end",
+					     start + image_get_data_size(header));
+		if (ret) {
+			printf("QUA_CHAIN initrd DTB setup fail %s\n", fdt_strerror(ret));
 			return;
 		}
-	} else if (
-#ifdef QUA_MAINTENANCE_INITRD
-	    setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 0x30000000 0x23000000")
-#else
-	    setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 - 0x23000000")
-#endif
-	) {
+	}
+	if (setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 - 0x23000000")) {
 		puts("QUA_CHAIN volatile environment setup failed\n");
 		return;
 	}
