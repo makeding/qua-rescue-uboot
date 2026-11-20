@@ -105,9 +105,9 @@ void qua_chain_linux_trial(void)
 		int chosen = fdt_path_offset(dtb, "/chosen");
 
 		/* Pass the payload directly, bypassing vendor ramdisk processing. */
-		ret = fdt_setprop_u32(dtb, chosen, "linux,initrd-start", start);
+		ret = fdt_setprop_cell(dtb, chosen, "linux,initrd-start", start);
 		if (!ret)
-			ret = fdt_setprop_u32(dtb, chosen, "linux,initrd-end",
+			ret = fdt_setprop_cell(dtb, chosen, "linux,initrd-end",
 					     start + image_get_data_size(header));
 		if (ret) {
 			printf("QUA_CHAIN initrd DTB setup fail %s\n", fdt_strerror(ret));
