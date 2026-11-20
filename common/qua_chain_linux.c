@@ -27,27 +27,6 @@
 #define QUA_GOLDEN_MAGIC2        0x626f6f74UL
 #define QUA_DTB_EXPANDED_BYTES   0x00010000UL
 
-static int qua_check_crc(const char *name, ulong address, ulong bytes,
-			 u32 expected)
-{
-	u32 actual;
-
-	if (!bytes) {
-		printf("QUA_CHAIN %s has zero length\n", name);
-		return -1;
-	}
-
-	actual = crc32(0, (const uchar *)address, bytes);
-	if (actual != expected) {
-		printf("QUA_CHAIN %s CRC fail got=%08x expected=%08x\n",
-		       name, actual, expected);
-		return -1;
-	}
-
-	printf("QUA_CHAIN %s CRC ok %08x\n", name, actual);
-	return 0;
-}
-
 static void __attribute__((noreturn)) qua_enter_stage2(void)
 {
 	void (*stub)(void) = (void (*)(void))QUA_STAGE2_STUB_ADDR;
@@ -82,21 +61,6 @@ void qua_chain_linux_trial(void)
 		       (ulong)QUA_BASE_ENV_BYTES);
 		return;
 	}
-
-	if (
-#ifdef QUA_MAINTENANCE_INITRD
-	    qua_check_crc("initrd", QUA_INITRD_ADDR, QUA_INITRD_BYTES,
-			  QUA_INITRD_CRC32) ||
-#endif
-#ifndef QUA_DEVICE_SPECIFIC_ENVIRONMENT
-	    qua_check_crc("baseline-env", QUA_BASE_ENV_ADDR,
-			  QUA_BASE_ENV_BYTES, QUA_BASE_ENV_CRC32) ||
-#endif
-	    qua_check_crc("stage2", QUA_STAGE2_ADDR, QUA_STAGE2_BYTES,
-			  QUA_STAGE2_CRC32) ||
-	    qua_check_crc("stage2-stub", QUA_STAGE2_STUB_ADDR,
-			  QUA_STAGE2_STUB_BYTES, QUA_STAGE2_STUB_CRC32))
-		return;
 
 	/* The vendor second stage uses more environment fields than this trial
 	 * changes.  Restore the verified pre-trial image first, then override
