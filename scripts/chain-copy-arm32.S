@@ -41,23 +41,6 @@ _start:
  ldr r5, =0x21000
  cmp r3, r5
  bne invalid
- mvn r5, #0
- mov r6, r0
- mov r7, r1
- ldr r9, =0xedb88320
-1: ldrb r8, [r6], #1
- eor r5, r5, r8
- mov r8, #8
-2: lsrs r5, r5, #1
- eorcs r5, r5, r9
- subs r8, r8, #1
- bne 2b
- subs r7, r7, #1
- bne 1b
- mvn r5, r5
- cmp r5, r2
- movne r0, #3
- bne fail
  /* From here there is no return; original code at destination is overwritten. */
  cpsid if
  dsb sy
