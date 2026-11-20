@@ -1,9 +1,13 @@
-name: Release
+name: Build and release
 
 on:
   push:
+    branches:
+      - '**'
     tags:
-      - 'v*'
+      - '**'
+  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -16,14 +20,20 @@ jobs:
       - name: Build toolchain image
         run: docker build -t qua-rescue-builder .
       - name: Build rescue firmware
-        run: docker run --rm -v "$PWD:/src" qua-rescue-builder bash scripts/build-rescue.sh profiles/release-build.json
+        run: docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/src" qua-rescue-builder bash scripts/build-rescue.sh profiles/release-build.json
       - name: Prepare release assets
         run: |
           mkdir -p out/release
           cp out/package/u-boot-ram-console.bin out/release/
           cd out/release
           sha256sum u-boot-ram-console.bin > SHA256SUMS
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: qua-rescue-uboot-${{ github.sha }}
+          path: out/release/*
       - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
