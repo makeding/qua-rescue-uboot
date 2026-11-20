@@ -13,6 +13,7 @@
 #include <configs/qua_trial_values.h>
 
 #define QUA_KERNEL_ADDR          0x26000000UL
+#define QUA_INITRD_ADDR          0x30000000UL
 #define QUA_DTB_ADDR             0x23000000UL
 #define QUA_BASE_ENV_ADDR        0x24000000UL
 #define QUA_STAGE2_ADDR          0x01500000UL
@@ -84,10 +85,16 @@ void qua_chain_linux_trial(void)
 
 	if (qua_check_crc("kernel", QUA_KERNEL_ADDR, QUA_KERNEL_BYTES,
 			  QUA_KERNEL_CRC32) ||
+#ifdef QUA_MAINTENANCE_INITRD
+	    qua_check_crc("initrd", QUA_INITRD_ADDR, QUA_INITRD_BYTES,
+			  QUA_INITRD_CRC32) ||
+#endif
 	    qua_check_crc("dtb", QUA_DTB_ADDR, QUA_DTB_BYTES,
 			  QUA_DTB_CRC32) ||
+#ifndef QUA_DEVICE_SPECIFIC_ENVIRONMENT
 	    qua_check_crc("baseline-env", QUA_BASE_ENV_ADDR,
 			  QUA_BASE_ENV_BYTES, QUA_BASE_ENV_CRC32) ||
+#endif
 	    qua_check_crc("stage2", QUA_STAGE2_ADDR, QUA_STAGE2_BYTES,
 			  QUA_STAGE2_CRC32) ||
 	    qua_check_crc("stage2-stub", QUA_STAGE2_STUB_ADDR,
@@ -96,7 +103,8 @@ void qua_chain_linux_trial(void)
 
 	/* The vendor second stage uses more environment fields than this trial
 	 * changes.  Restore the verified pre-trial image first, then override
-	 * only the one-shot fields below. */
+	 * only the one-shot fields below. env_import validates the environment's
+	 * own CRC even when the environment is generated for each device. */
 	if (env_import((const char *)QUA_BASE_ENV_ADDR, 1) != 1) {
 		puts("QUA_CHAIN baseline environment import failed\n");
 		return;
@@ -115,7 +123,11 @@ void qua_chain_linux_trial(void)
 	}
 
 	if (setenv("bootargs", QUA_TRIAL_BOOTARGS) ||
+#ifdef QUA_MAINTENANCE_INITRD
+	    setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 0x30000000 0x23000000") ||
+#else
 	    setenv("bootcmd", "env set fdt_high ffffffffffffffff;booti 0x26000000 - 0x23000000") ||
+#endif
 	    setenv("bootdelay", "0") ||
 	    setenv("fdt_loadaddr", "23000000")) {
 		puts("QUA_CHAIN volatile environment setup failed\n");

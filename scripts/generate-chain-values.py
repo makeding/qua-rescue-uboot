@@ -24,6 +24,15 @@ def main():
              '#ifndef __QUA_TRIAL_VALUES_H', '#define __QUA_TRIAL_VALUES_H',
              '#define QUA_TRIAL_NONCE ' + json.dumps(nonce),
              '#define QUA_TRIAL_BOOTARGS ' + json.dumps(plan['normal']['bootargs'] + ' qua_ram_chain=' + nonce)]
+    if plan.get('device_specific_environment') is True:
+        lines.append('#define QUA_DEVICE_SPECIFIC_ENVIRONMENT 1')
+    if 'initrd' in plan['buffers']:
+        initrd = plan['buffers']['initrd']
+        if not 64 < initrd['bytes'] <= 0x4000000:
+            raise RuntimeError('maintenance initrd size exceeds the reserved RAM range')
+        lines += ['#define QUA_MAINTENANCE_INITRD 1',
+                  f'#define QUA_INITRD_BYTES {initrd["bytes"]}U',
+                  f'#define QUA_INITRD_CRC32 0x{initrd["crc32"]}U']
     for name, macro in [('kernel', 'KERNEL'), ('dtb', 'DTB'), ('stage2', 'STAGE2'), ('base_env', 'BASE_ENV')]:
         blob = plan['buffers'][name]
         lines += [f'#define QUA_{macro}_BYTES {blob["bytes"]}U',
