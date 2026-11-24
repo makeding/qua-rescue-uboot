@@ -21,6 +21,11 @@ def read_env(fd):
             raise RuntimeError('unexpected factory environment member')
         offset = FACTORY_OFFSET + entries[0].offset_data
         raw = archive.extractfile(entries[0]).read()
+    pairs, end = decode_env(raw)
+    return offset, raw, pairs, end
+
+
+def decode_env(raw):
     if len(raw) != ENV_BYTES or struct.unpack_from('<I', raw)[0] != zlib.crc32(raw[4:]):
         raise RuntimeError('environment CRC mismatch')
     end = raw[4:].find(b'\0\0')
@@ -29,7 +34,7 @@ def read_env(fd):
     pairs = [part.split(b'=', 1) for part in raw[4:4 + end].split(b'\0')]
     if any(len(pair) != 2 for pair in pairs) or len({pair[0] for pair in pairs}) != len(pairs):
         raise RuntimeError('malformed or duplicate environment key')
-    return offset, raw, pairs, end
+    return pairs, end
 
 
 def encode_env(raw, pairs, old_end):

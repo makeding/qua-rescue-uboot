@@ -3,6 +3,13 @@
 公開レスキュー U-Boot はカーネルと DTB の固定サイズ・CRC に依存しません。カーネルや DTB の更新にレスキュー U-Boot の再ビルドは不要です。
 `bootargs` は読み込んだ機器の環境設定を維持し、ビルド時の値で上書きしません。
 
+診断用の `maxcpus=1` が環境に残っている場合、SMP 対応カーネルでも
+CPU0 のみで起動します。対象機で
+`python3 scripts/enable-smp.py /var/lib/qua-kernel/smp-environment-before`
+を実行すると、両方の factory 環境とレスキュースロットのインポート用環境
+（LBA 211184）から、この引数だけを削除します。変更前の環境は保存されます。
+再起動後に `/sys/devices/system/cpu/online` が `0-3` になることを確認してください。
+
 `release-build.json` は公開ファームウェアのビルド専用設定です。CID、バックアップ、個体別環境 CRC を含まず、インストール用プロファイルとは異なります。個体別環境の検証はインストーラーが担当します。
 
 `profiles/qua-profile.example.json` は記入例です。そのままインストールには使用できません。
